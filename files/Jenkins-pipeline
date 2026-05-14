@@ -1,0 +1,85 @@
+pipeline {
+    agent any
+
+    environment {
+        PATH = "/usr/local/bin:/usr/bin:/bin:$PATH"
+        DOCKER_IMAGE = "node-app"
+        DOCKER_REPO = "jagdish4281/node-app"
+    }
+
+    tools {
+        terraform 'terraform'
+        ansible 'ansible'
+    }
+
+    stages {
+
+        stage("Download Git repo") {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/Jagdish-Patel1824/forethought-app.git'
+            }
+        }
+
+        stage('TF Init') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('TF Apply') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+
+        stage('Build Image') {
+            steps {
+                sh '''
+                    docker buildx build --platform linux/amd64 -t node-app:latest .
+                '''
+            }
+        }
+
+        stage('Tag Image') {
+            steps {
+                sh "docker tag ${DOCKER_IMAGE}:latest ${DOCKER_REPO}:latest"
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker_cred',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh "docker push ${DOCKER_REPO}:latest"
+            }
+        }
+
+        stage('Ansible Deploy') {
+            steps {
+                withCredentials([file(credentialsId: 'ec2-keys', variable: 'ANSIBLE_PRIVATE_KEY_FILE')]) {
+                    sh '''
+                        export ANSIBLE_HOST_KEY_CHECKING=False
+                        ansible-playbook -i ansible/inventory.aws_ec2.yml ansible/playbook.yml
+                    '''
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-app-deployment
+
+spec:
+  replicas: 1
+  selector: 
+    matchLabels: 
+      app: node-app
+  
+  template: 
+    metadata:
+      labels: 
+        app: node-app
+    
+    spec:
+      containers:
+      - name: node-app
+        image: jagdish4281/node-app:latest
+        ports:
+        - containerPort: 8080  
+
+      - name: node-exporter
+        image: prom/node-exporter
+        ports:
+          - containerPort: 9100

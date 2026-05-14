@@ -1,0 +1,16 @@
+# Terraform
+.terraform/
+*.terraform/tfstate
+*.terraform/tfstate.backup
+
+# Maven
+target/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# Secrets
+*.pem
